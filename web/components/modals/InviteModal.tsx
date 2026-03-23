@@ -8,8 +8,16 @@ export function InviteModal({ workspaceId, workspaceName, onClose }: { workspace
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'VIEWER' | 'EDITOR' | 'ADMIN'>('EDITOR');
   const [loading, setLoading] = useState(false);
+  const [inviteLink, setInviteLink] = useState('');
+  const [copied, setCopied] = useState(false);
   const { user } = useCurrentUser();
   const { success, error, loading: loadingToast, removeToast } = useToast();
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(inviteLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -22,32 +30,39 @@ export function InviteModal({ workspaceId, workspaceName, onClose }: { workspace
       const supabase = createClient();
       
       // Basic validation: check if already a member
-      const { data: existUser } = await supabase.from('User').select('id').eq('email', email).single();
+      const { data: existUser } = await supabase.from('User').select('id').eq('email', email).maybeSingle();
       if (existUser) {
-        const { data: isMember } = await supabase.from('WorkspaceMember').select('id').eq('userId', existUser.id).eq('workspaceId', workspaceId).single();
+        const { data: isMember } = await supabase.from('WorkspaceMember').select('id').eq('userId', existUser.id).eq('workspaceId', workspaceId).maybeSingle();
         if (isMember) {
            throw new Error('This person is already a member of this workspace.');
         }
       }
 
-      // Generate a token natively or let Supabase default handle it (we'll just use a uuid gen client side here or wait for db trigger. Since schema implies default token gen, we'll insert without token maybe? Actually let's just make one to pass to API)
-      const mockToken = crypto.randomUUID();
-
+      const token = crypto.randomUUID();
       const { error: invError } = await supabase.from('Invitation').insert({
-        email, role, workspaceId, invitedByUserId: user.id, token: mockToken, expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        email, role, workspaceId, invitedByUserId: user.id, token,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
       });
       if (invError) throw invError;
 
-      // Trigger /api/invite
-      fetch('/api/invite', {
+      // Try sending the email
+      const res = await fetch('/api/invite', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, role, workspaceName, inviterName: user.name, token: mockToken })
-      }).catch(console.error); // Ignore fire-and-forget error
+        body: JSON.stringify({ email, role, workspaceName, inviterName: user.name, token })
+      });
+      const result = await res.json();
 
       removeToast(toastId);
-      success(`Invitation sent to ${email} ✓`);
-      onClose();
+
+      if (result.emailSent === false && result.inviteUrl) {
+        // Email failed (Resend free-tier restriction) — show copyable link
+        setInviteLink(result.inviteUrl);
+        success(`Invitation saved! Share the link below with ${email} ↓`);
+      } else {
+        success(`Invitation sent to ${email} ✓`);
+        onClose();
+      }
     } catch (err: any) {
       console.error(err);
       removeToast(toastId);
@@ -108,11 +123,35 @@ export function InviteModal({ workspaceId, workspaceName, onClose }: { workspace
             </div>
           </div>
 
+          {/* Copyable invite link (shown when email fails) */}
+          {inviteLink && (
+            <div className="mt-2 p-4 bg-[#0f1929] border border-[#6366f150] rounded-xl">
+              <div className="text-[11px] font-bold uppercase tracking-widest text-[#6366f1] mb-2">📋 Share this link instead</div>
+              <div className="flex items-center gap-2">
+                <input
+                  readOnly
+                  value={inviteLink}
+                  className="flex-1 bg-[#050810] border border-[#334155] rounded-lg px-3 py-2 text-xs text-[#94a3b8] focus:outline-none truncate"
+                />
+                <button
+                  type="button"
+                  onClick={copyLink}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold transition-all shrink-0 ${copied ? 'bg-[#10b981] text-white' : 'bg-[#6366f1] text-white hover:bg-[#818cf8]'}`}
+                >
+                  {copied ? '✓ Copied' : 'Copy'}
+                </button>
+              </div>
+              <p className="text-[11px] text-[#475569] mt-2">Send this link to your friend. They can click it to join the workspace.</p>
+            </div>
+          )}
+
           <div className="mt-2 flex justify-end gap-3 pt-4 border-t border-[#1e293b]">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-[#94a3b8] hover:text-white transition-colors">Cancel</button>
-            <button type="submit" disabled={loading || !email.trim()} className="px-5 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white text-sm font-semibold rounded-lg hover:shadow-lg disabled:opacity-50 transition-all">
-              {loading ? 'Sending...' : 'Send Invitation'}
-            </button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-semibold text-[#94a3b8] hover:text-white transition-colors">{inviteLink ? 'Done' : 'Cancel'}</button>
+            {!inviteLink && (
+              <button type="submit" disabled={loading || !email.trim()} className="px-5 py-2 bg-gradient-to-r from-[#6366f1] to-[#8b5cf6] text-white text-sm font-semibold rounded-lg hover:shadow-lg disabled:opacity-50 transition-all">
+                {loading ? 'Sending...' : 'Send Invitation'}
+              </button>
+            )}
           </div>
         </form>
       </div>
