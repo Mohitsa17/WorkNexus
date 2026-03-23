@@ -4,8 +4,6 @@ import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/components/ui/Toast';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
 export function InviteModal({ workspaceId, workspaceName, onClose }: {
   workspaceId: string;
   workspaceName: string;
@@ -58,7 +56,7 @@ export function InviteModal({ workspaceId, workspaceName, onClose }: {
       });
       if (invError) throw invError;
 
-      const link = `${APP_URL}/invite/${token}`;
+      const link = `${window.location.origin}/invite/${token}`;
 
       // Try email silently — never crash the flow if it fails
       try {

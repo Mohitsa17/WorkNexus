@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { email, role, workspaceName, inviterName, token } = body;
-    const inviteUrl = `${APP_URL}/invite/${token}`;
+    
+    // Dynamically get the base URL from the incoming request
+    const origin = new URL(req.url).origin;
+    const inviteUrl = `${origin}/invite/${token}`;
 
     // If no Resend key, skip email silently
     if (!process.env.RESEND_API_KEY) {
