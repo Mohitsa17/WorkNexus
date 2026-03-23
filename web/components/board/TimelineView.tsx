@@ -39,7 +39,7 @@ export function TimelineView({ tasks, members, role, onTaskClick }: Props) {
     const maxDate = new Date(maxT);
     const totalDays = Math.ceil((maxDate.getTime() - minDate.getTime()) / 86400000);
 
-    const ds = [];
+    const ds: Date[] = [];
     for(let i=0; i<totalDays; i++) {
        const d = new Date(minDate);
        d.setDate(minDate.getDate() + i);
