@@ -1,10 +1,11 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 
-export default function InviteAcceptPage({ params }: { params: { token: string } }) {
+export default function InviteAcceptPage({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = use(params);
   const [invite, setInvite] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -16,7 +17,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
     if (userLoading) return;
     if (!user) {
       // Must be logged in to accept
-      router.push(`/login?redirect=/invite/${params.token}`);
+      router.push(`/login?redirect=/invite/${token}`);
       return;
     }
 
@@ -24,7 +25,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
       const sb = createClient();
       const { data, error } = await sb.from('Invitation')
          .select('*, workspace:Workspace(*), inviter:User!invitedByUserId(*)')
-         .eq('token', params.token)
+         .eq('token', token)
          .single();
          
       if (error || !data) {
@@ -40,7 +41,7 @@ export default function InviteAcceptPage({ params }: { params: { token: string }
     };
 
     checkInvite();
-  }, [params.token, user, userLoading, router]);
+  }, [token, user, userLoading, router]);
 
   const handleAccept = async () => {
     if (!invite || !user) return;
