@@ -169,7 +169,7 @@ export function TaskDrawer({ taskId, members, role, onClose }: Props) {
   return (
     <div
       ref={drawerRef}
-      className="w-[90vw] sm:w-[460px] h-full bg-[#0a111e] flex flex-col overflow-y-auto animate-slide-in-right shadow-[inset_1px_0_0_#1e293b,-20px_0_60px_rgba(0,0,0,0.9)] text-sm"
+      className="w-[90vw] sm:w-[500px] h-full bg-[#0a111e] flex flex-col overflow-hidden animate-slide-in-right shadow-[inset_1px_0_0_#1e293b,-20px_0_60px_rgba(0,0,0,0.9)] text-sm"
     >
       {/* ── Header ── */}
       <div className="px-5 py-3 flex items-center justify-between shrink-0 bg-[#080d18] border-b border-[#1e293b] sticky top-0 z-20">
@@ -196,8 +196,10 @@ export function TaskDrawer({ taskId, members, role, onClose }: Props) {
         <button onClick={onClose} className="ml-3 shrink-0 text-[#64748b] hover:text-white bg-[#1e293b] w-8 h-8 flex items-center justify-center rounded-lg transition-colors">✕</button>
       </div>
 
-      {/* ── Properties (2-col compact grid) ── */}
-      <div className="px-5 py-3 border-b border-[#1e293b] bg-[#0c1525]">
+      {/* ── Scrollable Body ── */}
+      <div className="flex-1 overflow-y-auto w-full flex flex-col">
+        {/* ── Properties (Compact grid) ── */}
+        <div className="px-5 py-3 border-b border-[#1e293b] bg-[#0c1525]">
         <div className="grid grid-cols-2 gap-2">
           {/* Assignee */}
           <PropSelect
@@ -280,6 +282,38 @@ export function TaskDrawer({ taskId, members, role, onClose }: Props) {
               disabled={isViewer}
               className="w-full bg-transparent border-none focus:outline-none text-[#e2e8f0] text-xs font-semibold placeholder:text-[#475569] disabled:opacity-60"
               placeholder="e.g. Sprint 1"
+            />
+          </div>
+
+          {/* Start Date */}
+          <div className="bg-[#080d18] border border-[#1e293b] rounded-lg p-2">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[#475569] mb-1">Start Date</div>
+            <input
+              type="date"
+              value={task.startDate ? task.startDate.split('T')[0] : ''}
+              onChange={e => {
+                const val = e.target.value ? new Date(e.target.value).toISOString() : null;
+                setTask({ ...task, startDate: val } as any);
+                updateField('startDate', val);
+              }}
+              disabled={isViewer}
+              className="w-full bg-transparent border-none focus:outline-none text-[#e2e8f0] text-xs font-semibold disabled:opacity-60 [color-scheme:dark]"
+            />
+          </div>
+
+          {/* Due Date */}
+          <div className="bg-[#080d18] border border-[#1e293b] rounded-lg p-2">
+            <div className="text-[10px] font-bold uppercase tracking-widest text-[#475569] mb-1">Due Date</div>
+            <input
+              type="date"
+              value={task.dueDate ? task.dueDate.split('T')[0] : ''}
+              onChange={e => {
+                const val = e.target.value ? new Date(e.target.value).toISOString() : null;
+                setTask({ ...task, dueDate: val } as any);
+                updateField('dueDate', val);
+              }}
+              disabled={isViewer}
+              className="w-full bg-transparent border-none focus:outline-none text-[#e2e8f0] text-xs font-semibold disabled:opacity-60 [color-scheme:dark]"
             />
           </div>
         </div>
@@ -373,6 +407,8 @@ export function TaskDrawer({ taskId, members, role, onClose }: Props) {
           </div>
         )}
       </div>
+      
+      </div> {/* End of scrollable body */}
     </div>
   );
 }
